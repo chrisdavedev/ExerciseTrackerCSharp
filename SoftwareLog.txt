@@ -1,0 +1,28 @@
+ACTIVE FEATURE:
+- LogExercise Functionality
+	[x] Convert Cardio duration to seconds from MM:SS format in input
+	[x] Complete Log Weightlifting Exercise
+	[ ] Need to specify in help menu that this will create a new session for the single exercise.
+
+UPCOMING FEATURES:
+- LogSession
+	- Thinking to call LogExercise() in a loop and print out "=== Log Exercise X ===" 
+- ListAllSessions
+	- Currently 'SELECT * FROM lifts;' 
+	- probably want to select *, then read into a list, and clean output for modification in console
+- ViewSession()
+	- 
+- ModifySession (modify a session)
+- DeleteSession (delete a session)
+- ValidateExerciseName() 
+	- Rename Lifts that are similar or have typos? Validate LiftName before committing to Database
+	- Get a list of all Exercise_Name's in table, check it against new session's exercises and ask user 'did you mean NAME?'?
+	- probably drop "ValidateExerciseName()" into LogExercise
+	- brainstorm ways to select from predefined list of lifts (i.e enter Barbell Bench, gives options for Barbell Pressing movements)
+
+
+OPTIONAL FEATURES:
+
+COMPLETED FEATURES:
+- Main Menu Loop
+- Help Menu
