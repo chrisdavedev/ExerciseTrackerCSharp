@@ -1,3 +1,6 @@
+using System.Security.Principal;
+using Microsoft.VisualBasic;
+
 namespace ConsoleApp2
 {
     class Menu
@@ -14,21 +17,80 @@ namespace ConsoleApp2
             Console.WriteLine("\nquit (q) - Quit the app");
         }
 
+        public static string GetStringInput(string InputType) // WITH INPUT VALIDATION YAY
+        {
+            while(true) // keep going til valid input
+                try
+                {
+                    Console.Write(">>>");
+                    string Input = Console.ReadLine() ?? "".ToLower();
+                    if(InputType == "time")
+                    {
+                        string[] parts = Input.Split(':'); // make sure right format
+                        if (parts.Length != 2)
+                            throw new FormatException();
+                        else
+                            return Input;
+                    }
+                    else
+                    {
+                        return Input;
+                    }
+                }
+                catch(FormatException)
+                {  
+                    if(InputType == "time")
+                    {
+                        Console.WriteLine("Invalid input. Please enter in MM:SS format.");
+                    }
+                    else
+                        Console.WriteLine("Invalid input, please try again.");
+                }
+        }
+
+        public static int GetIntInput() // WITH INPUT VALIDATION YAY
+        {
+            while(true) // keep going til valid input
+                try
+                {
+                    Console.Write(">>>");
+                    int Input = Int32.Parse(Console.ReadLine() ?? "");
+                    return Input;
+                }
+                catch(FormatException)
+                {  
+                    Console.WriteLine("Invalid input, please try again.");
+                }
+        }
+
+        public static DateTime GetDateInput() // WITH INPUT VALIDATION YAY
+        {
+            while(true) // keep going til valid input (which returns)
+                try
+                {
+                    Console.Write(">>>");
+                    DateTime input = DateTime.Parse(Console.ReadLine() ?? "");
+                    return input;
+                }
+                catch(FormatException)
+                {
+                    Console.WriteLine("Invalid input, please enter date in format MM/dd/yyyy.");
+                }
+        }
         public static void BeginLoop()
         {
-            PrintHelpMenu();
             string MenuSelection = "";
             while (MenuSelection != "q")
             {   
-                Console.Write(">>>");
-                MenuSelection = Console.ReadLine() ?? ""; // empty string if error in readline
+                PrintHelpMenu();
+                MenuSelection = GetStringInput("menu");
                 switch (MenuSelection)
                 {
                     case "le":
                     case "logexercise":
-                        Console.Write("What is the date for this exercise? Please enter in format MM/dd/yyyy: ");
-                        DateTime Date = DateTime.Parse(Console.ReadLine() ?? ""); 
-                        LogExercise(Date, NewSession(Date));
+                        Console.WriteLine("What is the date for this exercise? Please enter in format MM/dd/yyyy:");
+                        DateTime Date = GetDateInput();
+                        LogExercise(NewSession(Date));
                         break;
                     case "ls":
                     case "logsession":
@@ -49,76 +111,71 @@ namespace ConsoleApp2
             }
         }
 
-        static void LogExercise(DateTime Date, int SessionId)
+        static void LogExercise(int SessionId)
         {
             string ExerciseType, ExerciseName;
 
-            Console.Write("What type of workout is this: Cardio (c) or Weightlifting (w)?: ");
-            ExerciseType = Console.ReadLine() ?? "".ToLower();
+            Console.WriteLine("What type of workout is this: Cardio (c) or Weightlifting (w)?:");
+            ExerciseType = GetStringInput("");
 
             if(ExerciseType == "cardio" || ExerciseType == "c")
             {
                 ExerciseType = "cardio"; //if user entered "c", we want to store "cardio" in DB
-                Console.Write("Enter name of Cardio: ");
-                ExerciseName = Console.ReadLine() ?? "";
+                Console.WriteLine("Enter name of Cardio: ");
+                ExerciseName = GetStringInput("");
 
-                Console.Write("Enter duration in MM:SS format: ");
-                string[] DurationInput = (Console.ReadLine() ?? "").Split(":");
+                Console.WriteLine("Enter duration in MM:SS format:");
+                string[] DurationInput = GetStringInput("time").Split(":");
                 int DurationSeconds = (Int32.Parse(DurationInput[0]) * 60) + Int32.Parse(DurationInput[1]);
-                string ReturnString = WorkoutManagement.ExecuteSQL($@"INSERT INTO workouts (date, exercise_type, exercise_name, weight, reps, duration_seconds) 
-                                                VALUES ('{ExerciseType}', '{ExerciseName}', 0, 0, {DurationSeconds}, {SessionId});", "NonQuery");
-                Console.WriteLine(ReturnString);
+                
+                WorkoutManagement.InsertWorkout(ExerciseType, ExerciseName, 0, 0, DurationSeconds, SessionId);
             }
             else if(ExerciseType == "weightlifting" || ExerciseType == "w")
             {
                 int Weight, Reps;
                 ExerciseType = "weightlifting"; //if user entered "w", we want to store "weightlifting" in DB
-                Console.Write("Enter name of Lift: ");
-                ExerciseName = Console.ReadLine() ?? "";
+                Console.WriteLine("Enter name of Lift:");
+                ExerciseName = GetStringInput("");
 
-                Console.Write("Please enter the amount of weight in pounds: ");
-                Weight = Int32.Parse(Console.ReadLine() ?? "");
+                Console.WriteLine("Please enter the amount of weight in pounds:");
+                Weight = GetIntInput();
 
-                Console.Write("Please enter number of reps: ");
-                Reps = Int32.Parse(Console.ReadLine() ?? "");
+                Console.WriteLine("Please enter number of reps:");
+                Reps = GetIntInput();
 
-                string ReturnString = WorkoutManagement.ExecuteSQL($@"INSERT INTO workouts (exercise_type, exercise_name, weight, reps, duration_seconds, session_id) 
-                                                VALUES ('{ExerciseType}', '{ExerciseName}', {Weight}, {Reps}, 0, {SessionId});", "NonQuery");
-                Console.WriteLine(ReturnString);
-
+                WorkoutManagement.InsertWorkout(ExerciseType, ExerciseName, Weight, Reps, 0, SessionId);
             }
         }
         
         static int NewSession(DateTime DateInput)
         {
-            WorkoutManagement.ExecuteSQL($@"INSERT INTO sessions (date) 
-                                                VALUES ('{DateInput}');", "NonQuery");
+            WorkoutManagement.InsertSession(DateInput);
             
-            string SessionId = WorkoutManagement.ExecuteSQL($@"SELECT MAX(session_id) FROM sessions;", "Query"); //assuming only one user
+            int SessionId = WorkoutManagement.GetNewestSessionId(); //assuming only one user
             Console.WriteLine($"New Session ID Created: {SessionId}");
-            return Int32.Parse(SessionId);
+            return SessionId;
         }
         static void LogSession()
         {
             Console.Clear();
 
             Console.WriteLine("========== Log Session ==========");
-            Console.Write("Please enter the date in format MM/dd/yyyy for this session: ");
-            DateTime DateInput = DateTime.Parse(Console.ReadLine() ?? "");
-            Console.Write("How many exercises are in this session? (INTEGER): ");
-            int NumExercises = Int32.Parse(Console.ReadLine() ?? "");
+            Console.WriteLine("Please enter the date in format MM/dd/yyyy for this session: ");
+            DateTime DateInput = GetDateInput();
+            Console.WriteLine("How many exercises are in this session? (INTEGER): ");
+            int NumExercises = GetIntInput();
             int SessionId = NewSession(DateInput);
             
-            for(int i = 1; i < NumExercises; i++)
+            for(int i = 1; i <= NumExercises; i++)
             {
                 Console.WriteLine($"\n====Exercise #{i}====");
-                LogExercise(DateInput, SessionId);
+                LogExercise(SessionId);
             }
         }
 
         static public void ListAllWorkouts()
         {
-            string ReturnString = WorkoutManagement.ExecuteSQL("SELECT * FROM workouts", "Query");
+            string ReturnString = WorkoutManagement.GetAllWorkouts();
             Console.WriteLine(ReturnString);
             Console.ReadLine();
         }

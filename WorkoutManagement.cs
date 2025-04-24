@@ -5,7 +5,54 @@ namespace ConsoleApp2
 {
     static class WorkoutManagement
     {
-        static public string ExecuteSQL(string SqlStatement, string CommandType)
+        public static void InsertWorkout(string ExerciseType, string ExerciseName, int Weight, int Reps, int DurationSeconds, int SessionId)
+        {
+            var parameters = new Dictionary<string, object>
+            {
+                {"@type", ExerciseType},
+                {"@name", ExerciseName},
+                {"@weight", Weight},
+                {"@reps", Reps},
+                {"@duration", DurationSeconds},
+                {"@session", SessionId}
+            };
+
+            ExecuteSQL(@"
+                INSERT INTO workouts (exercise_type, exercise_name, weight, reps, duration_seconds, session_id)
+                VALUES (@type, @name, @weight, @reps, @duration, @session);",
+                "NonQuery", 
+                parameters);
+        }
+
+        public static void InsertSession(DateTime Date)
+        {
+            var parameters = new Dictionary<string, object>
+            {
+                { "@date", Date },
+            };
+            Console.WriteLine("Calling ExecuteSQL()");
+            ExecuteSQL($@"INSERT INTO sessions (date) VALUES (@date);", "NonQuery", parameters);
+        }
+
+        public static int GetNewestSessionId()
+        {
+            string result = ExecuteSQL(
+                "SELECT MAX(session_id) FROM sessions;",
+                "Query",
+                new Dictionary<string, object>());
+
+            if (int.TryParse(result.Trim(), out int id))
+                return id;
+
+            throw new Exception("No sessions found.");
+        }
+        
+        public static string GetAllWorkouts()
+        {
+                //  "SELECT * FROM workouts", "Query"
+                return ExecuteSQL("SELECT * FROM workouts", "Query", new Dictionary<string, object>{});
+        }
+        static public string ExecuteSQL(string SqlStatement, string CommandType, Dictionary<string, object>parameters)
         {
             try
             {
@@ -15,6 +62,10 @@ namespace ConsoleApp2
 
                     var Command = Connection.CreateCommand();
                     Command.CommandText = SqlStatement;
+                    foreach (var param in parameters) // YAY FOR NO SQL INJECTION
+                    {
+                        Command.Parameters.AddWithValue(param.Key, param.Value);
+                    }
 
                     if (CommandType == "Query")
                         using (var Reader = Command.ExecuteReader())
@@ -64,7 +115,8 @@ namespace ConsoleApp2
                         FOREIGN KEY (session_id) REFERENCES sessions(session_id)
                     );
                     ",
-                    "NonQuery"); // absence of .db file creates one when SQL statement called
+                    "NonQuery",
+                    new Dictionary<string, object>{}); // absence of .db file creates one when SQL statement called
                 Console.WriteLine(ReturnValue);
 
                 ReturnValue = WorkoutManagement.ExecuteSQL(
@@ -74,7 +126,8 @@ namespace ConsoleApp2
                         date DATE NOT NULL
                     );
                     ",
-                    "NonQuery");
+                    "NonQuery",
+                    new Dictionary<string, object>{}); // absence of .db file creates one when SQL statement called);
                 Console.WriteLine(ReturnValue);
                 Thread.Sleep(3000);
             }
