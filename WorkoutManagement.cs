@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.Data.Sqlite;
+using Serilog;
 
 namespace ConsoleApp2
 {
@@ -16,12 +17,13 @@ namespace ConsoleApp2
                 {"@duration", DurationSeconds},
                 {"@session", SessionId}
             };
-
+            Log.Verbose("Attempting to insert into workouts DB with values {@parameters}", parameters);
             ExecuteSQL(@"
                 INSERT INTO workouts (exercise_type, exercise_name, weight, reps, duration_seconds, session_id)
                 VALUES (@type, @name, @weight, @reps, @duration, @session);",
                 "NonQuery", 
                 parameters);
+            Log.Verbose("Successfully inserted into workouts DB, values: {@parameters}", parameters); // wont get here if error
         }
 
         public static void InsertSession(DateTime Date)
@@ -30,12 +32,14 @@ namespace ConsoleApp2
             {
                 { "@date", Date },
             };
-            Console.WriteLine("Calling ExecuteSQL()");
+            Log.Verbose("Attempting to insert into workouts DB with values {@parameters}", parameters);
             ExecuteSQL($@"INSERT INTO sessions (date) VALUES (@date);", "NonQuery", parameters);
+            Log.Verbose("Successfully inserted into workouts DB with values {@parameters}", parameters);
         }
 
         public static int GetNewestSessionId()
         {
+            Log.Verbose("Attempting to get the newest session ID.");
             string result = ExecuteSQL(
                 "SELECT MAX(session_id) FROM sessions;",
                 "Query",
@@ -44,13 +48,17 @@ namespace ConsoleApp2
             if (int.TryParse(result.Trim(), out int id))
                 return id;
 
-            throw new Exception("No sessions found.");
+            Log.Error("No sessions found when getting newest Session ID.");
+            throw new Exception("No sessions found when getting newest Session ID.");
         }
         
         public static string GetAllWorkouts()
         {
-                //  "SELECT * FROM workouts", "Query"
-                return ExecuteSQL("SELECT * FROM workouts", "Query", new Dictionary<string, object>{});
+            //  "SELECT * FROM workouts", "Query"
+            Log.Verbose("Attempting to get all workouts from workouts DB");
+            string ReturnValue = ExecuteSQL("SELECT * FROM workouts", "Query", new Dictionary<string, object>{});
+            Log.Verbose("Successfully got all workouts from DB");
+            return ReturnValue;
         }
         static public string ExecuteSQL(string SqlStatement, string CommandType, Dictionary<string, object>parameters)
         {
@@ -70,6 +78,7 @@ namespace ConsoleApp2
                     if (CommandType == "Query")
                         using (var Reader = Command.ExecuteReader())
                         {
+                            Log.Verbose("Successfully executed {Command.CommandText}", Command.CommandText);
                             var Result = "";
                             int RowCount = 0;
                             while (Reader.Read())
@@ -87,15 +96,24 @@ namespace ConsoleApp2
                     else if (CommandType == "NonQuery")
                     {
                         int RowsAffected = Command.ExecuteNonQuery();
-                        return $"Successfully Executed '{SqlStatement}.' \nAffected {RowsAffected} rows.";
+                        Log.Verbose("Successfully executed {Command.CommandText}", Command.CommandText);
+
+                        return "";
                     }
+                    else // shouldn't call this, just return empty string
+                        return "";
                 }
+            }
+            catch (SqliteException ex)
+            {
+                Log.Error("SQLLITEEXCEPTION, Error executing statement {SqlStatement} with exception {ex.Message}", SqlStatement, ex.Message);
+                return "There was an error executing a SQL command.";
             }
             catch (Exception ex)
             {
-                return $"Error executing statement:{SqlStatement}\nWith Exception: {ex.Message}";
+                Log.Error("Error executing statement:{SqlStatement}\nWith Exception: {ex.Message}", SqlStatement, ex.Message);
+                return "There was an error executing a SQL command.";
             }
-            return $"Unexpected error while executing statement:\n{SqlStatement}"; // need this or compilation error
         }
 
         public static void InitDB()
@@ -117,7 +135,8 @@ namespace ConsoleApp2
                     ",
                     "NonQuery",
                     new Dictionary<string, object>{}); // absence of .db file creates one when SQL statement called
-                Console.WriteLine(ReturnValue);
+                Log.Verbose("Initialized workouts table with return value \n{ReturnValue}", ReturnValue);
+                Log.Information("Initialized workouts table!");
 
                 ReturnValue = WorkoutManagement.ExecuteSQL(
                     @"
@@ -128,7 +147,8 @@ namespace ConsoleApp2
                     ",
                     "NonQuery",
                     new Dictionary<string, object>{}); // absence of .db file creates one when SQL statement called);
-                Console.WriteLine(ReturnValue);
+                Log.Verbose("Initialized sessions table with return value \n{ReturnValue}", ReturnValue);
+                Log.Information("Initialized sessions table!");
                 Thread.Sleep(3000);
             }
         }

@@ -1,5 +1,6 @@
 using System.Security.Principal;
 using Microsoft.VisualBasic;
+using Serilog;
 
 namespace ConsoleApp2
 {
@@ -24,6 +25,7 @@ namespace ConsoleApp2
                 {
                     Console.Write(">>>");
                     string Input = Console.ReadLine() ?? "".ToLower();
+                    Log.Verbose("User entered string {Input}", Input);
                     if(InputType == "time")
                     {
                         string[] parts = Input.Split(':'); // make sure right format
@@ -41,10 +43,10 @@ namespace ConsoleApp2
                 {  
                     if(InputType == "time")
                     {
-                        Console.WriteLine("Invalid input. Please enter in MM:SS format.");
+                        Log.Warning("Invalid input. Please enter in MM:SS format.");
                     }
                     else
-                        Console.WriteLine("Invalid input, please try again.");
+                        Log.Warning("Invalid input, please try again.");
                 }
         }
 
@@ -55,11 +57,12 @@ namespace ConsoleApp2
                 {
                     Console.Write(">>>");
                     int Input = Int32.Parse(Console.ReadLine() ?? "");
+                    Log.Verbose("User entered int {Input}", Input);
                     return Input;
                 }
                 catch(FormatException)
                 {  
-                    Console.WriteLine("Invalid input, please try again.");
+                    Log.Warning("Invalid input, please try again.");
                 }
         }
 
@@ -70,20 +73,23 @@ namespace ConsoleApp2
                 {
                     Console.Write(">>>");
                     DateTime input = DateTime.Parse(Console.ReadLine() ?? "");
+                    Log.Verbose("User entered date {input}", input);
                     return input;
                 }
                 catch(FormatException)
                 {
-                    Console.WriteLine("Invalid input, please enter date in format MM/dd/yyyy.");
+                    Log.Warning("Invalid input, please enter date in format MM/dd/yyyy.");
                 }
         }
         public static void BeginLoop()
         {
+            Log.Verbose("Begin menu loop");
             string MenuSelection = "";
             while (MenuSelection != "q")
             {   
                 PrintHelpMenu();
                 MenuSelection = GetStringInput("menu");
+                Log.Verbose("User entered menu command '{MenuSelection}'", MenuSelection);
                 switch (MenuSelection)
                 {
                     case "le":
@@ -105,10 +111,11 @@ namespace ConsoleApp2
                     case "quit":
                         return; // exit Program
                     default: // invalid input
-                        Console.WriteLine($"You entered: '{MenuSelection}'. Please select a valid command.");
+                        Log.Warning("Entered: '{MenuSelection}'. Please select a valid command.", MenuSelection);
                         break; // return to help menu
                 }
             }
+            Log.Verbose("End menu loop");
         }
 
         static void LogExercise(int SessionId)
@@ -152,7 +159,7 @@ namespace ConsoleApp2
             WorkoutManagement.InsertSession(DateInput);
             
             int SessionId = WorkoutManagement.GetNewestSessionId(); //assuming only one user
-            Console.WriteLine($"New Session ID Created: {SessionId}");
+            Log.Information("New Session ID Created with ID: {SessionId}", SessionId);
             return SessionId;
         }
         static void LogSession()
